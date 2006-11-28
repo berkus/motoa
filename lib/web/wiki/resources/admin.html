@@ -1,0 +1,13 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<HTML><HEAD><TITLE>Narf-lib: {$page.name}</TITLE>
+<LINK REL="stylesheet" HREF="{$resourceurl}/text-styles.css"></link>
+<script>function on_load() { }</script>
+</HEAD><BODY BGCOLOR="FFCF95" onLoad="on_load()">
+<div id=logo><a href="{$baseurl}?page.name=HomePage"><img src="{$resourceurl}/narf-logo.gif" alt="Narf" border=0></a></div>
+
+<div id=content>
+<div id=header><h1>{$page.name}</h1></div>
+<narf:include file="$content_template">
+<hr>
+<a href="{$baseurl}?action=edit&page.name={$page.name}">Edit text of this page</a> | <a href="{$baseurl}?action=page_history&page.name={$page.name}">View other revisions</a><br>Last edited {$page.mtime_pretty}
+</div></body></html>

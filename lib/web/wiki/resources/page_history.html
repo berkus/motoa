@@ -1,0 +1,19 @@
+<table>
+<tr>
+<td>Rev #</td>
+<td>Time</td>
+<td>Remote Address</td>
+<td>&nbsp;</td>
+</tr>
+
+<narf:foreach from="page.history" item="rev">
+<tr>
+<td>{$rev.revision}</td>
+<td>{$rev.mtime_pretty}</td>
+<td>{$rev.remote_addr}</td>
+<td><a href="{$baseurl}?action=view_revision&page.name={$page.name}&revision={$rev.revision}">view</a></td>
+</tr>
+</narf:foreach>
+</table>
+
+<p><a href="{$baseurl}?page.name={$page.name}">view page</a>
