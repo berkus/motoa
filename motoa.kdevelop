@@ -16,6 +16,9 @@
     <general>
       <activedir/>
     </general>
+    <run>
+      <directoryradio>executable</directoryradio>
+    </run>
   </kdevcustomproject>
   <kdevfileview>
     <groups>
@@ -23,6 +26,8 @@
       <group pattern="*.ui" name="QT Designer files" />
       <group pattern="*.png" name="Icons" />
       <group pattern="*" name="Others" />
+      <hidenonprojectfiles>false</hidenonprojectfiles>
+      <hidenonlocation>false</hidenonlocation>
     </groups>
     <tree>
       <hidenonprojectfiles>false</hidenonprojectfiles>

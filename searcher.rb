@@ -17,10 +17,12 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-$LOAD_PATH.unshift './lib'
+require 'rubygems'
 require 'cgi'
 require 'mechanize'
 require 'iconv'
+require 'open-uri'
+require 'digest/md5'
 
 class Searcher
 
@@ -29,22 +31,63 @@ class Searcher
     p "Searching for #{@terms.size} terms"
   end
 
-  def query
+  def query(pbar)
     agent = WWW::Mechanize.new
     agent.user_agent = 'TaramParam/1.0.0; berkus@madfire.net'
 
+    begin
+      results = YAML::load_file("article.index")
+    rescue Errno::ENOENT
+      results = {}
+    end
+
+    pbar.show
+
     now = Time.now
     twodaysago = now - 3600*48
-
     @terms.each { |term|
-      page = agent.get("http://news.yandex.ru/yandsearch?rpt=nnews2&date=within&text=#{CGI.escape(Iconv.new('cp1251', 'utf8').iconv(term))}&within=777&from_day=#{twodaysago.day}&from_month=#{twodaysago.month}&from_year=#{twodaysago.year}&to_day=#{now.day}&to_month=#{now.month}&to_year=#{now.year}&numdoc=500&Done=%CD%E0%E9%F2%E8&np=1")
+      # use open-uri's URI because uri's parse chokes on escaped chars.
+      page = agent.get(URI("http://news.yandex.ru/yandsearch?rpt=nnews2&date=within&text=#{CGI.escape(Iconv.new('cp1251', 'utf8').iconv(term))}&within=777&from_day=#{twodaysago.day}&from_month=#{twodaysago.month}&from_year=#{twodaysago.year}&to_day=#{now.day}&to_month=#{now.month}&to_year=#{now.year}&numdoc=500&Done=%CD%E0%E9%F2%E8&np=1"))
 
-      File.open("result_#{term.gsub(" ", "_")}.page", "w") { |f|
-        f.puts page.body
+      # grab data between <ol start="1" class="results"> and </ol>
+      subpage = page.search('ol.results > li')
+
+      step = 0
+      pbar.setProgress(step, subpage.size)
+
+      subpage.each { |pg|
+        GC.start
+        pbar.setProgress(step, subpage.size)
+        step += 1
+
+        url = pg.search('span > a[@href]')[0].get_attribute('href')
+        title = pg.search('span > a[@href]').inner_html.strip
+        date = pg.search('span.date').inner_html
+        source = pg.search('span.source').inner_html
+        excerpt = pg.search('div').inner_html
+
+        unless results[url]
+          filename = "pages/"+Digest::MD5.hexdigest(url)+".html"
+          data = agent.get(URI(url))
+          File.open(filename, "w") { |of|
+            of.puts "<!-- saved from #{url} on #{Time.now.to_s}-->"
+            of.puts data.body
+          }
+
+          results[url] = {}
+          results[url][:source] = source
+          results[url][:title] = title
+          results[url][:date] = date
+          results[url][:fresh] = true
+          results[url][:filename] = filename
+          results[url][:search_term] = term
+        end
       }
+
+      YAML::save("article.index", results) # save after each iteration
     }
     p "Query complete"
-    GC.start
+    pbar.hide
   end
 
 end

@@ -39,10 +39,9 @@ class SearchTermsDialog < Qt::Dialog
 
   def dosearch
     return if @terms_input.text.strip.empty?
-    @pbar = Qt::ProgressDialog.new( "Searching for terms..", "Abort", 1, self, nil, true )
-    @pbar.setProgress(0)
     @searcher = Searcher.new( @terms_input.text )
-    @searcher.query
+    pbar = Qt::ProgressDialog.new( "Searching for terms..", "Abort", 1, self, nil, false )
+    @searcher.query(pbar)
   end
 
 end
