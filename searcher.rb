@@ -35,8 +35,11 @@ class Searcher
     agent = WWW::Mechanize.new
     agent.user_agent = 'TaramParam/1.0.0; berkus@madfire.net'
 
+    results = {} # declare var
     begin
-      results = YAML::load_file("article.index")
+      File.open("article.index", "r") { |f|
+        results = Marshal::load(f)
+      }
     rescue Errno::ENOENT
       results = {}
     end
@@ -60,18 +63,29 @@ class Searcher
         pbar.setProgress(step, subpage.size)
         step += 1
 
-        url = pg.search('span > a[@href]')[0].get_attribute('href')
-        title = pg.search('span > a[@href]').inner_html.strip
+        link = pg.search('span > a[@href]')
+
+        url = link[0].get_attribute('href')
+        title = link.inner_html.strip
         date = pg.search('span.date').inner_html
         source = pg.search('span.source').inner_html
         excerpt = pg.search('div').inner_html
 
         unless results[url]
+          p "fetching #{url}"
           filename = "pages/"+Digest::MD5.hexdigest(url)+".html"
-          data = agent.get(URI(url))
+          begin
+            data = open(URI(url)) #agent.get fails in hpricot on aspx pages - _why promised to fix in 0.6
+          rescue Timeout::Error
+            p "timed out"
+            next
+          rescue OpenURI::HTTPError
+            p "http error"
+            next
+          end
           File.open(filename, "w") { |of|
             of.puts "<!-- saved from #{url} on #{Time.now.to_s}-->"
-            of.puts data.body
+            of.puts data.read
           }
 
           results[url] = {}
@@ -81,10 +95,13 @@ class Searcher
           results[url][:fresh] = true
           results[url][:filename] = filename
           results[url][:search_term] = term
+          p "done"
         end
-      }
 
-      YAML::save("article.index", results) # save after each iteration
+        File.open("article.index", "w") { |file|
+          Marshal::dump(results, file) # save after each iteration
+        }
+      }
     }
     p "Query complete"
     pbar.hide

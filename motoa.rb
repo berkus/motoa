@@ -95,9 +95,12 @@ class Motoa < Qt::MainWindow
         help.insertSeparator()
         help.insertItem( tr("What's &This"), self, SLOT('whatsThis()'), Qt::KeySequence.new(SHIFT+Key_F1) )
 
-        @e = Qt::TextEdit.new( self, "editor" )
+        @e = Qt::TextBrowser.new( self, "browser" )
         @e.setFocus()
         setCentralWidget( @e )
+
+        @e.setText("<html><body><h1>No items</h1></body></html>")
+
         statusBar().message( tr("Ready"), 2000 )
 
         resize( 450, 600 )
