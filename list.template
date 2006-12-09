@@ -1,0 +1,4 @@
+<h1><a href="{file}">{title}</a></h1>
+<small>{date} <a href="{source_url}">{source}</a></small>
+{is_new}
+<br/>

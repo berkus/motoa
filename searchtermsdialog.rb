@@ -1,6 +1,6 @@
 ############################################################################
-#    Copyright (C) 2006 by Stanislav Karchebny   #
-#    stanislav.karchebny@skype.net   #
+#    Copyright (C) 2006 by Stanislav Karchebny                             #
+#    berkus@madfire.net                                                    #
 #                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
 #    it under the terms of the GNU General Public License as published by  #
@@ -17,6 +17,7 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
+require 'settings'
 require 'searcher'
 
 class SearchTermsDialog < Qt::Dialog
@@ -24,24 +25,72 @@ class SearchTermsDialog < Qt::Dialog
   slots 'dosearch()'
 
   def initialize(parent)
-        super( parent, "Search Terms", false, WDestructiveClose )
+    super(parent, Qt::WA_DeleteOnClose)
+    setModal(true)
+    setWindowTitle("Enter search terms, each on new line")
 
-        Qt::VBoxLayout.new(self)
+    Qt::VBoxLayout.new(self)
 
-        @terms_input = Qt::TextEdit.new(self)
-        @ok_btn = Qt::PushButton.new("Go", self)
+    @terms_input = Qt::TextEdit.new(self)
+    days_label = Qt::Label.new("Days:", self)
+    @days_input = Qt::LineEdit.new(self)
+    @ok_btn = Qt::PushButton.new("Go", self)
 
-        layout.add(@terms_input)
-        layout.add(@ok_btn)
+    hbox = Qt::HBoxLayout.new(self)
+    hbox.addWidget(days_label)
+    hbox.addWidget(@days_input)
+    
+    layout.addWidget(@terms_input)
+    layout.addItem(hbox)
+    layout.addWidget(@ok_btn)
 
-        connect(@ok_btn, SIGNAL('clicked()'), SLOT('dosearch()'))
+    connect(@ok_btn, SIGNAL('clicked()'), SLOT('dosearch()'))
   end
 
   def dosearch
-    return if @terms_input.text.strip.empty?
-    @searcher = Searcher.new( @terms_input.text )
-    pbar = Qt::ProgressDialog.new( "Searching for terms..", "Abort", 1, self, nil, false )
-    @searcher.query(pbar)
+    terms = @terms_input.toPlainText.strip.squeeze("\r\n")
+    days = @days_input.text.to_i
+    return if terms.empty? || !days.is_a?(Fixnum)
+
+    $settings.days = days
+    $settings.terms = terms
+    PREFS.save
+    
+    @searcher = Searcher.new( terms )
+    hide
+    pbar = Qt::ProgressDialog.new( "Searching for terms..", "Abort", 0, 100, self )
+    pbar.setModal(false)
+    pbar.windowTitle = "Searching..."
+    results = @searcher.query(days, pbar)
+    pbar.close
+
+    e = parent.centralWidget
+    e.setHtml("")
+    e.setUpdatesEnabled(false)
+    tmpl = IO.readlines("list.template").join("\n")
+
+    p "Populating html..."
+    pbar = Qt::ProgressDialog.new( "Reading in results..", "Abort", 0, results.size, self )
+    pbar.windowTitle = "Please wait"
+    step = 0
+    results.each { |key,res|
+      pbar.setValue(step)
+      step += 1
+      $qApp.processEvents
+
+      source_url = key
+      source     = res[:source]
+      date       = res[:date]
+      file       = res[:filename]
+      title      = res[:title]
+      is_new     = res[:fresh] ? "NEW" : ""
+      out = tmpl.gsub("{source_url}", source_url).gsub("{source}", source).gsub("{date}", date).gsub("{file}", file).gsub("{title}", title).gsub("{is_new}", is_new)
+      e.append(out)
+    }
+    e.setUpdatesEnabled(true)
+    pbar.close
+    p "Done."
+    self.reject
   end
 
 end

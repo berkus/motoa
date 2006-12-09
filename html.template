@@ -1,0 +1,12 @@
+
+<li>
+<span class="block">
+<a class="filelink" href="{file}">{title}</a>
+<span class="date">{date}</span>
+<span class="source">{source}</span>
+<span class="terms">{terms}</span>
+<div class="desc">{excerpt}</div>
+<a class="original" href="{source_url}">{source_url}</a>
+</span>
+</li>
+
