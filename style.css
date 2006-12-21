@@ -1,1 +1,31 @@
 /* Default css style for results output */
+
+span.highlight {
+	background-color: green;
+}
+
+span.multi {
+	background-color: yellow;
+}
+
+span.broken {
+	background-color: red;
+}
+
+span.block {
+	background-color: white;
+}
+
+span.date {
+	text-decoration: italic;
+}
+
+div.navback, div.navfore {
+	padding: 15px;
+	background-color: blue;
+	color: white;
+}
+
+div.navback, div.navfore a, a:visited, a:hover {
+	color: white;
+}

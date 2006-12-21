@@ -25,25 +25,38 @@ require 'open-uri'
 require 'digest/md5'
 
 def doiconv(term)
-#  Iconv.conv('cp1251', 'UTF-8', term)
-  term
+  Iconv.conv('cp1251', 'UTF-8', term)
+#  term
 end
 
 
 class Searcher
 
-  def initialize(terms)
+  def initialize(terms, basedir, override = false)
     @terms = terms
+    @base = basedir
+    @override = override # if true, ignore the fact that we already found some news on previous runs and return them now
     p "Searching for #{@terms.size} terms"
+
+    FileUtils.mkdir_p(@base)
+    FileUtils.mkdir_p(filepath('pages'))
+    FileUtils.mkdir_p(filepath('debug.querypages'))
+    FileUtils.mkdir_p(filepath('results'))
   end
 
-  def query(days, pbar)
+  def filepath(name)
+    File.join(@base, File::Separator, name)
+  end
+
+  def query(days, limit, pbar)
     agent = WWW::Mechanize.new
     agent.user_agent = 'TaramParam/1.0.0; berkus@madfire.net'
 
+    output_results = {}
+
     results = {} # declare var
     begin
-      File.open("article.index", "r") { |f|
+      File.open(filepath("article.index"), "r") { |f|
         results = Marshal::load(f)
       }
     rescue Errno::ENOENT
@@ -56,12 +69,12 @@ class Searcher
     now = Time.now
     daysago = now - days*3600*24
 
-    @terms.each { |term|
-      term = doiconv(term)
+    @terms.each { |hashterm|
+      term = doiconv(hashterm[:term])
       # use open-uri's URI because uri's parse chokes on escaped chars.
-      page = agent.get(URI("http://news.yandex.ru/yandsearch?rpt=nnews2&date=within&text=#{CGI.escape(term)}&within=777&from_day=#{daysago.day}&from_month=#{daysago.month}&from_year=#{daysago.year}&to_day=#{now.day}&to_month=#{now.month}&to_year=#{now.year}&numdoc=500&Done=%CD%E0%E9%F2%E8&np=1"))
+      page = agent.get(URI("http://news.yandex.ru/yandsearch?rpt=nnews2&date=within&text=#{CGI.escape(term)}&within=777&from_day=#{daysago.day}&from_month=#{daysago.month}&from_year=#{daysago.year}&to_day=#{now.day}&to_month=#{now.month}&to_year=#{now.year}&numdoc=#{limit}&Done=%CD%E0%E9%F2%E8&np=1"))
 
-      File.open("debug.querypages/#{term.gsub(" ", "_")}_#{Time.now.to_s.gsub(/[ +:-]/, "_")}", "w") { |ff|
+      File.open(filepath("debug.querypages/#{term.gsub(" ", "_")}_#{Time.now.to_s.gsub(/[ +:-]/, "_")}"), "w") { |ff|
          ff.puts page.body
       }
 
@@ -84,52 +97,66 @@ class Searcher
 
         url = link[0].get_attribute('href')
         title = link.inner_html.strip
-        date = pg.search('span.date').inner_html
+        date = pg.search('span.date').inner_html.gsub("&nbsp;", " ")
         source = pg.search('span.source').inner_html
         excerpt = pg.search('div').inner_html
 
-        unless results[url]
-          p "fetching #{url}"
-          filename = "pages/"+Digest::MD5.hexdigest(url)+".html"
-          begin
-            data = open(URI(url)) #agent.get fails in hpricot on aspx pages - _why promised to fix in 0.6
-          rescue Timeout::Error
-            p "timed out"
-            next
-          rescue OpenURI::HTTPError
-            p "http error"
-            next
-          # rescue ERRNO::EBADF
-	  rescue
-	    p "Unknown error"
-	    next
-          end
-          File.open(filename, "w") { |of|
-            of.puts "<!-- saved from #{url} on #{Time.now.to_s}-->"
-            of.puts data.read
-          }
+        if date =~ /^\d\d:\d\d$/ # only time
+          date = DateTime.now
+        else
+          date = begin
+                  DateTime::strptime(date, "%d.%m.%y %H:%M")
+                 rescue ArgumentError
+                  date
+                 end
+        end
 
+        unless results[url]
           results[url] = {}
           results[url][:source] = source
           results[url][:title] = title
           results[url][:excerpt] = excerpt
           results[url][:date] = date
-          results[url][:fresh] = true
-          results[url][:filename] = filename
+          results[url][:fetch_date] = DateTime.now
           results[url][:search_term] = [term]
+          results[url][:importance] = hashterm[:importance]
+
+          p "fetching #{url}"
+          filename = filepath("pages/"+Digest::MD5.hexdigest(url)+".html")
+          results[url][:filename] = filename
+          results[url][:downloaded] = true
+
+          begin
+            data = open(URI(url)) #agent.get fails in hpricot on aspx pages - _why promised to fix in 0.6
+          rescue
+            p "fetch error"
+            results[url][:filename] = url
+            results[url][:downloaded] = false
+            next
+          end
+          File.open(filename, "w") { |of|
+            of.puts "<!-- saved from #{url} on #{Time.now.to_s} -->"
+            of.puts data.read
+          }
+          # add newly found stuff to output
+          output_results[url] = results[url]
           p "done"
         else
           # We have this url, but probably on different search term
           results[url][:search_term] << term unless results[url][:search_term].include? term
+          results[url][:excerpt] += "<br />" + excerpt unless results[url][:excerpt].include? excerpt
+          results[url][:importance] = hashterm[:importance] if hashterm[:importance] > results[url][:importance]
+          # add already existing stuff to output only when overriding
+          output_results[url] = results[url] if @override
         end
 
-        File.open("article.index", "w") { |file|
+        File.open(filepath("article.index"), "w") { |file|
           Marshal::dump(results, file) # save after each iteration
         }
       }
     }
     p "Query complete"
-    results.select { |k,r| r[:fresh] == true }
+    output_results
   end
 
 end
