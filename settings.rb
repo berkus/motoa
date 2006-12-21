@@ -1,21 +1,23 @@
-$LOAD_PATH.unshift("lib")
-require 'preferences'
-
-PREFS = Preferences.new('batch.ini')
-
 class Settings
-  attr_accessor :days, :terms
+  attr_accessor :days, :terms, :outfile
   
-  def initialize
-    PREFS.register "batch" do |entry|
-      entry.var "terms"
-      entry.var "days" => 2
-    end
-  end
-  
-  def cleanup
-    PREFS.save
+  def initialize(name)
+      @outfile = File::basename(name, ".conf") + ".html"
+      @terms = []
+      @days = 2
+      readterm = false
+      IO.readlines(name).each { |line|
+         if line =~ /^===+/
+           readterm = true
+           next
+         end
+         if readterm
+            @terms << line.strip
+         else
+            if line =~ /^days:\s*(\d+)/
+               @days = $1.to_i
+            end
+         end
+      }
   end
 end
-
-$settings = Settings.new

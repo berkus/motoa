@@ -25,14 +25,15 @@ require 'open-uri'
 require 'digest/md5'
 
 def doiconv(term)
-  Iconv.conv('cp1251', 'UTF-8', term)
+#  Iconv.conv('cp1251', 'UTF-8', term)
+  term
 end
 
 
 class Searcher
 
   def initialize(terms)
-    @terms = terms.split("\n")
+    @terms = terms
     p "Searching for #{@terms.size} terms"
   end
 
@@ -99,6 +100,9 @@ class Searcher
             p "http error"
             next
           # rescue ERRNO::EBADF
+	  rescue
+	    p "Unknown error"
+	    next
           end
           File.open(filename, "w") { |of|
             of.puts "<!-- saved from #{url} on #{Time.now.to_s}-->"

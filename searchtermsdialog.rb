@@ -56,7 +56,7 @@ class SearchTermsDialog < Qt::Dialog
     $settings.terms = terms
     PREFS.save
     
-    @searcher = Searcher.new( terms )
+    @searcher = Searcher.new( terms.split("\n") )
     hide
     pbar = Qt::ProgressDialog.new( "Searching for terms..", "Abort", 0, 100, self )
     pbar.setModal(false)

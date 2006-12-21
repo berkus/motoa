@@ -1,8 +1,21 @@
+unless ARGV.size > 0
+  puts "usage: batch.rb configfilename"
+  exit
+end
+
 $KCODE='u'
-require 'settings'
 require 'searcher'
+require 'settings'
+
+# fake entities
+class QApp
+  def processEvents
+  end
+end
+$qApp = QApp.new
 
 class FakePbar
+  attr_accessor :windowTitle
   def initialize
   end
   def setRange(a,b)
@@ -17,9 +30,10 @@ class FakePbar
   end
 end
 
-search = Searcher.new($settings.terms)
+config = Settings.new(ARGV[0])
+search = Searcher.new(config.terms)
 pbar = FakePbar.new
-results = search.query($settings.days, pbar)
+results = search.query(config.days, pbar)
 
 html = IO.readlines("html.header").join rescue ""
 tmpl = IO.readlines("html.template").join
@@ -46,8 +60,8 @@ results.sort { |a,b| a[1][:search_term].size <=> b[1][:search_term].size }.each 
 }
 html << IO.readlines("html.footer").join
 
-File.open("index.html", "w") { |f|
+File.open(config.outfile, "w") { |f|
   f.puts html
 }
 
-`start index.html`
+`start #{config.outfile}`
