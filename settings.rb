@@ -1,5 +1,5 @@
 class Settings
-  attr_reader :days, :terms, :override, :perpage, :limit, :basedir
+  attr_reader :days, :terms, :override, :perpage, :limit, :concurrency, :loglevel, :basedir
 
   def initialize(name)
       @basedir = File::basename(name, ".conf")
@@ -8,6 +8,8 @@ class Settings
       @limit = 500
       @override = false
       @perpage = 200
+      @concurrency = 3
+      @loglevel = Logger::INFO
       readterm = false
       IO.readlines(name).each { |line|
          if line =~ /^===+/
