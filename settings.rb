@@ -24,17 +24,36 @@ class Settings
               @terms << { :term => inp, :importance => 0 }
             end
          else
-            if line =~ /^days:\s*(\d+)/ # number of days to look back
+            if line =~ /^days:\s*(\d+)/i # number of days to look back
                @days = $1.to_i
             end
-            if line =~ /^limit:\s*(\d+)/ # max number of entries
+            if line =~ /^limit:\s*(\d+)/i # max number of entries
                @limit = $1.to_i
             end
-            if line =~ /^override:\s*(yes|true|1)$/ # override the search to return all results again
+            if line =~ /^override:\s*(yes|true|1)$/i # override the search to return all results again
                @override = true
             end
-            if line =~ /^perpage:\s*(\d+)/ # number of links on single index page
+            if line =~ /^perpage:\s*(\d+)/i # number of links on single index page
                @perpage = $1.to_i
+            end
+            if line =~ /^concurrency:\s*(\d+)/i # number of threads fetching pages concurrently
+               @concurrency = $1.to_i
+            end
+            if line =~ /^loglevel:\s*(\S+)/i # debug info level, Logger::NN
+              case $1.downcase
+              when 'fatal'
+                @loglevel = Logger::FATAL
+              when 'error'
+                @loglevel = Logger::ERROR
+              when 'warn'
+                @loglevel = Logger::WARN
+              when 'info'
+                @loglevel = Logger::INFO
+              when 'debug'
+                @loglevel = Logger::DEBUG
+              else
+               raise "Unknown log level #{$1}"
+              end
             end
          end
       }

@@ -53,8 +53,13 @@ class Searcher
   end
 
   def query(days, limit, concurrency, pbar)
+    log_info "Query: #{@terms.collect {|t| "#{t[:term]} (#{t[:importance]})"}.join(', ')}"
+    log_info "Limit: #{limit}"
+    log_info "Override: #{@override ? "Yes" : "No"}"
+    log_info "Concurrency: #{concurrency} threads"
+
     agent = WWW::Mechanize.new
-    agent.user_agent = 'TaramParam/1.0.0; berkus@madfire.net'
+    agent.user_agent_alias = 'Windows IE 6'
 
     output_results = {}
 
